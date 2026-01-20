@@ -34,7 +34,7 @@ assessment = st.selectbox(
 
 semester = st.selectbox(
     "Semester",
-    ["Third", "Fourth", "Fifth", "Sixth", "Seventh"]
+    ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh"]
 )
 
 BOLD_PHRASES = [
@@ -646,19 +646,51 @@ pa_plan = {u: st.number_input(u, 0, 5, 0, key=f"a{u}") for u in units}
 
 # ---------- PART B ----------
 st.header("PART B")
-pb_unit = st.selectbox("Unit", units)
-pb_portion = st.selectbox("Portion", ["I", "II"])
+
+pb_unit = st.selectbox("Unit (Common)", units)
 pb_type = st.selectbox("Type", ["Single", "Split"])
+
+if pb_type == "Single":
+    st.subheader("Portion Selection")
+
+    pb_portion_a = st.selectbox("6 (a) Portion", ["I", "II"])
+    pb_portion_b = st.selectbox("6 (b) Portion", ["I", "II"])
+
+else:  # Split
+    st.subheader("Portion Selection")
+
+    pb_portion_a = st.selectbox("6 (a) (i) & (ii) Portion", ["I", "II"])
+    pb_portion_b = st.selectbox("6 (b) (i) & (ii) Portion", ["I", "II"])
+
 
 # ---------- PART C ----------
 st.header("PART C")
+
 pc_cfg = []
+
 for i in range(2):
-    pc_cfg.append((
-        st.selectbox(f"Q{i+1} Unit", units, key=f"cu{i}"),
-        st.selectbox(f"Q{i+1} Portion", ["I", "II"], key=f"cp{i}"),
-        st.selectbox(f"Q{i+1} Type", ["Single", "Split"], key=f"ct{i}")
-    ))
+    st.subheader(f"Question {7+i}")
+
+    unit = st.selectbox(f"Q{7+i} Unit (Common)", units, key=f"pcu{i}")
+    qtype = st.selectbox(f"Q{7+i} Type", ["Single", "Split"], key=f"pct{i}")
+
+    if qtype == "Single":
+        pa = st.selectbox(f"Q{7+i} (a) Portion", ["I", "II"], key=f"pc{i}a")
+        pb = st.selectbox(f"Q{7+i} (b) Portion", ["I", "II"], key=f"pc{i}b")
+
+        pc_cfg.append((unit, qtype, pa, pb))
+
+    else:  # Split
+        pa = st.selectbox(
+            f"Q{7+i} (a)(i) & (ii) Portion",
+            ["I", "II"], key=f"pc{i}a"
+        )
+        pb = st.selectbox(
+            f"Q{7+i} (b)(i) & (ii) Portion",
+            ["I", "II"], key=f"pc{i}b"
+        )
+
+        pc_cfg.append((unit, qtype, pa, pb))
     
 # ==================================================
 # GENERATE
@@ -708,96 +740,119 @@ if st.button("Generate Question Paper"):
             qno += 1
 
     # ---------- PART B ----------
+    # ---------- PART B ----------
     if pb_type == "Single":
-        pool = [
+
+        pool_a = [
         q for q in bank
         if q["unit"] == pb_unit
         and q["marks"] == 8
-        and q["portion"] == pb_portion
-        ]
+        and q["portion"] == pb_portion_a
+    ]
 
-        q = pick(pool, used)
-        slots["6 (a)"] = q if q else {
-    "text": "Not available",
-    "marks": 8
-}
-        slots["6 (b)"] = pick(pool, used) or {
-    "text": "Not available",
-    "marks": 8
-}
+        pool_b = [
+        q for q in bank
+        if q["unit"] == pb_unit
+        and q["marks"] == 8
+        and q["portion"] == pb_portion_b
+    ]
 
-    else:  # SPLIT → 4 + 4
-        pool = [
+        qa = pick(pool_a, used)
+        qb = pick(pool_b, used)
+
+        slots["6 (a)"] = qa if qa else {"text": "Not available", "marks": 8}
+        slots["6 (b)"] = qb if qb else {"text": "Not available", "marks": 8}
+
+    else:  # SPLIT → 4 + 4 + 4 + 4
+
+        pool_a = [
         q for q in bank
         if q["unit"] == pb_unit
         and q["marks"] == 4
-        and q["portion"] == pb_portion
-        ]
+        and q["portion"] == pb_portion_a
+    ]
 
-        a1 = pick(pool, used)
-        a2 = pick(pool, used)
-        b1 = pick(pool, used)
-        b2 = pick(pool, used)
+        pool_b = [
+        q for q in bank
+        if q["unit"] == pb_unit
+        and q["marks"] == 4
+        and q["portion"] == pb_portion_b
+    ]
 
-        slots["6 (a) (i)"] = a1 if a1 else {
-    "text": "Not available", "marks": 4
-}
-        slots["6 (a) (ii)"] = a2 if a2 else {
-    "text": "Not available", "marks": 4
-}
-        slots["6 (b) (i)"] = b1 if b1 else {
-    "text": "Not available", "marks": 4
-}
-        slots["6 (b) (ii)"] = b2 if b2 else {
-    "text": "Not available", "marks": 4
-}
+        a1 = pick(pool_a, used)
+        a2 = pick(pool_a, used)
+        b1 = pick(pool_b, used)
+        b2 = pick(pool_b, used)
 
+        slots["6 (a) (i)"] = a1 if a1 else {"text": "Not available", "marks": 4}
+        slots["6 (a) (ii)"] = a2 if a2 else {"text": "Not available", "marks": 4}
+        slots["6 (b) (i)"] = b1 if b1 else {"text": "Not available", "marks": 4}
+        slots["6 (b) (ii)"] = b2 if b2 else {"text": "Not available", "marks": 4}
 
     # ---------- PART C ----------
     qno = 7
-    for u, portion, t in pc_cfg:
 
-        if t == "Single":
-            pool = [
+    for unit, qtype, portion_a, portion_b in pc_cfg:
+
+        if qtype == "Single":  # 16 + 16
+
+            pool_a = [
             q for q in bank
-            if q["unit"] == u
+            if q["unit"] == unit
             and q["marks"] == 16
-            and q["portion"] == portion
-            ]
+            and q["portion"] == portion_a
+        ]
 
-            q = pick(pool, used)
-            slots[f"{qno} (a)"] = q if q else {
-    "text": "Not available", "marks": 16
-}
-            slots[f"{qno} (b)"] = pick(pool, used) or {
-    "text": "Not available", "marks": 16
-}
-
-        else:  # SPLIT → 8 + 8
-            pool = [
+            pool_b = [
             q for q in bank
-            if q["unit"] == u
-            and q["marks"] == 8
-            and q["portion"] == portion
-            ]
+            if q["unit"] == unit
+            and q["marks"] == 16
+            and q["portion"] == portion_b
+        ]
 
-            a1 = pick(pool, used)
-            a2 = pick(pool, used)
-            b1 = pick(pool, used)
-            b2 = pick(pool, used)
+            qa = pick(pool_a, used)
+            qb = pick(pool_b, used)
+
+            slots[f"{qno} (a)"] = qa if qa else {
+            "text": "Not available", "marks": 16
+        }
+            slots[f"{qno} (b)"] = qb if qb else {
+            "text": "Not available", "marks": 16
+        }
+
+        else:  # Split → 8 + 8 + 8 + 8
+
+            pool_a = [
+            q for q in bank
+            if q["unit"] == unit
+            and q["marks"] == 8
+            and q["portion"] == portion_a
+        ]
+
+            pool_b = [
+            q for q in bank
+            if q["unit"] == unit
+            and q["marks"] == 8
+            and q["portion"] == portion_b
+        ]
+
+            a1 = pick(pool_a, used)
+            a2 = pick(pool_a, used)
+            b1 = pick(pool_b, used)
+            b2 = pick(pool_b, used)
 
             slots[f"{qno} (a) (i)"] = a1 if a1 else {
-    "text": "Not available", "marks": 8
-}
+            "text": "Not available", "marks": 8
+        }
             slots[f"{qno} (a) (ii)"] = a2 if a2 else {
-    "text": "Not available", "marks": 8
-}
+            "text": "Not available", "marks": 8
+        }
             slots[f"{qno} (b) (i)"] = b1 if b1 else {
-    "text": "Not available", "marks": 8
-}
+            "text": "Not available", "marks": 8
+        }
             slots[f"{qno} (b) (ii)"] = b2 if b2 else {
-    "text": "Not available", "marks": 8
-}
+            "text": "Not available", "marks": 8
+        }
 
         qno += 1
 
